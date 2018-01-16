@@ -1,0 +1,92 @@
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <iostream>
+using namespace std;
+#define BufferSize 10;
+
+int Buffer[BufferSize];
+int numb=0;
+//信号量：空槽数量和满槽数量以及互斥信号量
+sem_t mutex,empty,full;
+//缓冲区中生产者、消费者下标
+int p,c;
+
+int index=-1;
+void push(int i){
+  if (index <10 )
+    Buffer[++index]=i;
+  else
+    printf("缓冲区溢出/n");
+}
+int pop(){
+  int s=-1;
+  if (index>=0)
+   {
+     s=Buffer[index--];
+   }
+  else
+    printf("缓冲区为空\n");
+  return s;
+}
+void *Produce(void *arg){
+  int *pNum=(int *)arg;
+  int j;
+  j=0;
+  do{
+    if (numb>=50)
+      pthread_exit(0);
+    sem_wait(&empty);//buffer中有空位置，生产并减一
+    sem_wait(&mutex);//只能有一个线程生产
+    push(j);
+    printf("Produce%d:生产。 \n",*pNum );
+    j++;
+    sem_post(&mutex);//互斥锁解开
+    sem_post(&full);//增加一个可消费量
+    sleep(0.1);
+  }while(1);
+}
+void *Customer(void * arg){
+  int cNum=(int *)arg;
+  int j,x;
+  j=0;
+  while (1) {
+    sem_wait(&full);
+    sem_wait(&mutex);
+    x=pop();
+    if(x!=-1){
+      printf("%d Consumer%d:消费\n",num,cNum );
+    }
+    j++;
+    num++;
+    sem_post(&mutex);
+    sem_post(&empty);
+    if(num>=50)
+      pthread_exit(0);
+    sleep(0.1);
+  }
+}
+int main(){
+  //信号量
+  sem_init(&mutex,1,1);
+  sem_init(&empty,0,BufferSize);
+  sem_init(&full,0,0);
+
+  //多线程
+  pthread_t customer[2],producer[3];
+  int produce1=1,produce2=2,produce3=3,customer1=1,customer2=2,pt[5];
+  pt[0]=pthread_create(&customer[0],NULL,Customer,&customer1);
+  pt[1]=pthread_create(&customer[1],NULL,Customer,&customer2);
+  pt[2]=pthread_create(&produce[0],NULL,Produce,&produce1);
+  pt[3]=pthread_create(&produce[1],NULL,Produce,&produce2);
+  pt[4]=pthread_create(&produce[2],NULL,Produce,&produce3);
+  pthread_join(customer[0],NULL);
+  pthread_join(customer[1],NULL);
+  pthread_join(produce[0],NULL);
+  pthread_join(produce[1],NULL);
+  pthread_join(produce[3],NULL);
+  return 0;
+}
